@@ -1,6 +1,6 @@
-# Node.js Starter Overview
+# Allio, an All-In-One Bot 
 
-The Node.js Starter demonstrates a simple, reusable Node.js web application based on the Express framework.
+Allio is a bot that CAN do anything, all it needs for you is to write a module (commmand).
 
 ## Run the app locally
 
