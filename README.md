@@ -1,6 +1,6 @@
 # Allio, an All-In-One Bot 
 
-Allio is a bot that CAN do anything, all it needs for you is to write a module command in the form of a node.js module.
+Allio is a bot that CAN do anything, it just needs your help! Instead of creating a separate bot for every micro task, all of your bot commands can live inside Allio. Simply create your bot logic in the form of a node.js module and insert it into Allio's exisiting directory of commands.
 
 ## Run Allio locally
 
@@ -14,6 +14,6 @@ Allio is a bot that CAN do anything, all it needs for you is to write a module c
 1. Create a <COMMAND_NAME>.js file in the commands directory.
 2. In your new file, export a function called "run" which takes in a string and a callback function.
 3. Look at existing commands for guidance.
-4. Add your command name and path to `allioConfig.json`.
+4. Add your command name and path to `allioConfig.json`
 5. Submit a PR. 
 [Install Node.js]: https://nodejs.org/en/download/
