@@ -1,7 +1,6 @@
 const joke = require('jokesearch');
-
-exports.answer = function(cb){
+exports.run = function(message, cb){
     joke.getJoke(function(joke){
-        cb( joke);
+        cb(joke);
     });
 }
