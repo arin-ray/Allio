@@ -1,3 +1,8 @@
-*Config.json
+stantonConfig.json
+amznConfig.json
+groupmeConfig.json
 config.json
 node_modules/
+public/
+CHANGELOG.md
+test.js
