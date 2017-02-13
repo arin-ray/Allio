@@ -3,6 +3,7 @@
         "/joke" : "./commands/joke.js",
         "/cointoss" : "./commands/cointoss.js",
         "/coinflip" : "./commands/cointoss.js",
+        "/coin" : "./commands/cointoss.js",
         "/stock" : "./commands/stock.js",
         "/roast" : "./commands/roast.js",
         "/news" : "./commands/news.js"
