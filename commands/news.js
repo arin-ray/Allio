@@ -1,6 +1,7 @@
-const config = require('../stantonConfig.json');
+const allioConfig = require('../allioConfig.json');
+const stantonConfig = require('../stantonConfig.json');
 const NewsAPI = require('newsapi');
-const newsapi = new NewsAPI(config.NEWS_API_KEY);
+const newsapi = new NewsAPI(stantonConfig.NEWS_API_KEY);
 const async = require('async');
 const NO_NEWS = ['arin','a-ray','aray','a~ray']
 var CALLBACK_FIRED = false;
@@ -17,7 +18,7 @@ function mapNews(source, cb){
 }
 
 exports.run = function ( newsQuery, cb ){
-    var sources = config.NEWS_SOURCES;
+    var sources = allioConfig.NEWS_SOURCES;
     var newsDict = [];
     newsQuery = newsQuery.toLowerCase();
 
@@ -39,7 +40,7 @@ exports.run = function ( newsQuery, cb ){
                 for(var i=0;i<results.length;i++){
                 // console.log(results[i])
                     for(var j=0;j<results[i].length;j++){
-                    console.log(results[i][j]);
+                   // console.log(results[i][j]);
                         if(results[i][j].title.toLowerCase().indexOf(newsQuery) > -1 
                         || results[i][j].description.toLowerCase().indexOf(newsQuery) > -1 ){
                             newsDict.push({news: results[i][j].description, url: results[i][j].url});

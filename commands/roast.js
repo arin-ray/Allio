@@ -23,7 +23,9 @@ exports.run = function(message, cb){
     }
     if(!CALLBACK_FIRED){
         insultgenerator(function(insult){
-            cb( message+", "+insult );
+            //cb( message+", "+insult );
+            cb( "Sorry the insult insult generator is currently down, maybe you can try saying something nice instead?");
+
         });
     }
 }       

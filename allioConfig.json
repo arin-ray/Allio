@@ -1,5 +1,35 @@
 {
     "COMMANDS" : {
-        "joke" : "./commands/joke.js"
-    }
+        "/joke" : "./commands/joke.js",
+        "/cointoss" : "./commands/cointoss.js",
+        "/coinflip" : "./commands/cointoss.js",
+        "/stock" : "./commands/stock.js",
+        "/roast" : "./commands/roast.js",
+        "/news" : "./commands/news.js"
+    },
+    "GITHUB" : "https://github.com/arin-ray/Allio",
+    "MASTER" : [
+        "I can't insult my creator.",
+        "Naaah.",
+        "Nah we good.",
+        "Nope.",
+        "Sorry brah",
+        "Daddy told me not to talk back.",
+        "Sorry, not trying to get thrown in Arin's recycle bin."
+    ],
+   "NEWS_SOURCES" : [
+       "associated-press", 
+       "sky-sports-news",
+       "four-four-two",
+       "espn",
+       "bbc-news",
+       "fox-sports",
+       "google-news",
+       "the-lad-bible",
+       "the-sport-bible",
+       "techcrunch",
+       "nfl-news",
+       "financial-times",
+       "bloomberg"
+    ]
 }

@@ -5,7 +5,6 @@ const express = require('express');
 const async = require('async');
 const cfenv = require('cfenv');
 const NewsAPI = require('newsapi');
-const newsapi = new NewsAPI(config.NEWS_API_KEY);
 const bodyParser = require('body-parser');
 const jsonParser = bodyParser.json();
 const request = require('request');
@@ -19,6 +18,8 @@ const amazon = require('amazon-product-api');
 const amazonConfig = require('./amznConfig.json');
 const amazonClient = amazon.createClient(amazonConfig);
 const googl = require('goo.gl');
+const allioConfig = require('./allioConfig.json');
+const COMMANDS = allioConfig.COMMANDS;
 googl.setKey(config.GOOGLE_URL_KEY);
 
 
@@ -364,53 +365,27 @@ app.get('/groupme', jsonParser,function(req, res) {
   console.log('GOT GET REQ FROM GROUP ME');
   console.log(req.body)
   res.writeHead(200);
-  res.end("Hey, I'm Cool Guy.");
+  res.end("ACK");
 })
 
 app.post('/groupme', jsonParser,function(req, res) {
   var data = req.body;
-  console.log('GOT POST REQ FROM GROUP ME');
+  console.log('POST REQ FROM GROUP ME');
 
   // Check for text
   if(data.text){
     var command = data.text.split(" ");
-    if( command[0].toLowerCase() == '/stock' && command.length > 1){
-      findStockQuote( command[1] );
-    }else if (command[0].toLowerCase() == '/joke'){
-        joke.getJoke(function(joke){
-          sendGroupMeMessage( joke );
-        });
-    }else if (command[0].toLowerCase() == '/cointoss' || command[0].toLowerCase() == '/coinflip'){
-      sendGroupMeMessage((Math.floor(Math.random() * 2) == 0) ? 'Heads.' : 'Tails.');
-    }else if (data.text.toLowerCase().indexOf('suad') > -1){
-      sendGroupMeMessage("SUUUUAAAAADDDDD");
-    }else if (command[0].toLowerCase() == '/roast' || command[0].toLowerCase() == '/insult' || command[0].toLowerCase() == '/burn'){
-      if( command[1].toLowerCase().indexOf('arin') > -1 || command[1].toLowerCase().indexOf('ray') > -1 || command[1].toLowerCase().indexOf('allio') > -1 || command[1].indexOf('Arin') > -1){
-        sendGroupMeMessage(config.MASTER[Math.floor(Math.random() * config.MASTER.length) ]);
-      }else{
-        insultgenerator(function(insult){
-          var insult = command[1]+', '+insult.toLowerCase();
-            sendGroupMeMessage(insult);
-        });
-      }
-    }else if ( command[0].toLowerCase() == '/news' ){
-      var newsQuery = (data.text).substr((data.text).indexOf(" ") + 1);
-      if (newsQuery.trim() != ""){
-        if(newsQuery.toLowerCase().indexOf('arin') > -1 || newsQuery.toLowerCase().indexOf('aray') > -1 || newsQuery.toLowerCase().indexOf('a-ray') > -1 || newsQuery.toLowerCase().indexOf('a~ray') > -1 ){
-          sendGroupMeMessage("Arin (also known as rapper A~Ray) will be dropping his FIRE mixtape Back Where It All Started this year. Sign up here: http://arinray.me/rap")
-        }else{
-          console.log('Fetching News for:'+newsQuery);
-          fetchAndSendNews(newsQuery);
-        }
-      }
-    }else if ( command[0].toLowerCase() == '/shop' ){
-      var shopQuery = (data.text).substr((data.text).indexOf(" ") + 1);
-        if(shopQuery.toLowerCase().indexOf('arin') > -1 || shopQuery.toLowerCase().indexOf('aray') > -1 || shopQuery.toLowerCase().indexOf('a-ray') > -1 || shopQuery.toLowerCase().indexOf('a~ray') > -1 ){
-          sendGroupMeMessage("Shopping for music? Tired of mumble rap? A~Ray (also known as 25 Savage) will be dropping his FIRE mixtape Back Where It All Started this year. Sign up here: http://arinray.me/rap")
-        }else{
-          console.log('Shopping for:'+shopQuery);
-          shopAndSendItem(shopQuery);
-        }
+
+    // Check to see if we have the command
+    if(COMMANDS[command[0]]){
+      var allioModule = require(COMMANDS[command[0]]);
+      var message = (data.text).substr((data.text).indexOf(" ") + 1);
+      // Run the module with a message and a callback
+      allioModule.run(message, function(response){
+        sendGroupMeMessage(response);
+      })
+    }else if(command[0].charAt(0) === '/'){
+      sendGroupMeMessage("Sorry I dont have a "+command[0]+" command yet. Feel free to write one here!\n"+allioConfig.GITHUB);
     }
   }
 });
@@ -433,74 +408,6 @@ function sendGroupMeMessage( message ){
   });  
 }
 
-function findStockQuote( symbol ){
-  yahooFinance.snapshot({
-    symbol: symbol,
-    fields: ['n', 'p2','l1','m3'],
-  }, 
-  function (err, snapshot) {
-    if(snapshot.name == null){
-      sendGroupMeMessage("Please enter a valid ticker symbol.")
-    }else{
-      var message = snapshot.name+'\n';
-      if(snapshot.changeInPercent > 0){
-  message += "Up "+(snapshot.changeInPercent*100).toFixed(2)+"% today to $"+(snapshot.lastTradePriceOnly).toFixed(2)+"📈"
-      }else{
-  message += "Down "+(snapshot.changeInPercent*100).toFixed(2)+"% today to $"+(snapshot.lastTradePriceOnly).toFixed(2)+"📉"
-      }
-      if(snapshot['50DayMovingAverage']){
-        message+='\n50 Day Avg: $'+snapshot['50DayMovingAverage']
-      }
-      if(message.indexOf('Pandora') > -1){
-        message += '\nWhat a great buy!'
-      }
-      sendGroupMeMessage(message);
-
-    }
- });
-}
-function mapNews(source, cb){
-      newsapi.articles({
-        source: source,
-      }).then(articlesResponse => {
-        if(articlesResponse.status == 'ok'){
-            cb(null,  articlesResponse.articles);
-        }else{
-            cb(null, [])
-        }
-      });
-}
-
-function fetchAndSendNews( newsQuery ){
-    var sources = config.NEWS_SOURCES;
-    var newsDict = [];
-    newsQuery = newsQuery.toLowerCase();
-
-    if(newsQuery.trim() != ""){
-      console.log('Mapping news query to sources: '+newsQuery)
-        async.map(sources, mapNews, function(err, results) {
-                  console.log('Map Results')
-
-        //console.log(results)
-            for(var i=0;i<results.length;i++){
-            // console.log(results[i])
-                for(var j=0;j<results[i].length;j++){
-                 console.log(results[i][j]);
-                    if(results[i][j].title.toLowerCase().indexOf(newsQuery) > -1 
-                    || results[i][j].description.toLowerCase().indexOf(newsQuery) > -1 ){
-                        newsDict.push({news: results[i][j].description, url: results[i][j].url});
-                    }
-                }
-            }
-            if(newsDict.length==0){
-                sendGroupMeMessage("Sorry no news found for "+newsQuery);
-            }else{
-                var random_news = newsDict[Math.floor(Math.random() * newsDict.length) ];
-                sendGroupMeMessage(random_news.news+"\n"+random_news.url);
-            }
-        });
-    }
-}
 
 function shopAndSendItem( query ){
   amazonClient.itemSearch({
