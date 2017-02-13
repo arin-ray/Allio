@@ -1,6 +1,6 @@
 {
-  "name": "NodejsStarterApp",
-  "version": "0.0.1",
+  "name": "Allio",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "start": "node app.js"
