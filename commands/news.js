@@ -40,10 +40,12 @@ exports.run = function ( newsQuery, cb ){
                 for(var i=0;i<results.length;i++){
                 // console.log(results[i])
                     for(var j=0;j<results[i].length;j++){
-                   // console.log(results[i][j]);
-                        if(results[i][j].title.toLowerCase().indexOf(newsQuery) > -1 
-                        || results[i][j].description.toLowerCase().indexOf(newsQuery) > -1 ){
-                            newsDict.push({news: results[i][j].description, url: results[i][j].url});
+                    console.log(results[i][j]);
+                        if(results[i][j].description != null){
+                            if(results[i][j].title.toLowerCase().indexOf(newsQuery) > -1 
+                            || results[i][j].description.toLowerCase().indexOf(newsQuery) > -1 ){
+                                newsDict.push({news: results[i][j].description, url: results[i][j].url});
+                            }
                         }
                     }
                 }

@@ -1,5 +1,5 @@
 const yahooFinance = require('yahoo-finance');
-const GREAT_BUYS = ['Pandora','Apple','Google','Gold','Amazon','Alphabet']
+const GREAT_BUYS = ['Pandora','Apple','Google','Gold ','Amazon','Alphabet']
 
 exports.run = function(symbol, cb){
   yahooFinance.snapshot({
@@ -7,7 +7,9 @@ exports.run = function(symbol, cb){
     fields: ['n', 'p2','l1','m3'],
   }, 
   function (err, snapshot) {
-    if(snapshot.name == null){
+    console.log('Stock Snapshot');
+    console.log(snapshot);
+    if(snapshot.name == null && snapshot.lastTradePriceOnly != null){
       cb("Please enter a valid ticker symbol.")
     }else{
       var message = snapshot.name+'\n';
