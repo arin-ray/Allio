@@ -13,7 +13,7 @@ exports.run = function(message, cb){
 
     if(m == 'qb'){
         URL = 'https://www.fantasypros.com/nfl/rankings/qb.php'
-    }else if(m == 'wr' || m == 'rb' || m == 'flex'){
+    }else if(m == 'wr' || m == 'rb'|| m == 'te'){
         URL = 'https://www.fantasypros.com/nfl/rankings/half-point-ppr-'+m+'.php'
     }
 
@@ -25,8 +25,10 @@ exports.run = function(message, cb){
             if (lines[i].indexOf('fp-player-name=') > -1){
                 playerCount++;
                 var player = lines[i].match(rePlayer);
+                console.log(lines[i])
+                console.log(lines[i+1])
                 var vs = reMatchup.exec(lines[i+1]);
-                
+                console.log(vs)
                 var a = playerCount+') '+player+' '+vs[0];
                 a = a.replace(/\"/g,'');
                 result += a + '\n'

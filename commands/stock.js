@@ -9,7 +9,7 @@ exports.run = function(symbol, cb){
   function (err, snapshot) {
     console.log('Stock Snapshot');
     console.log(snapshot);
-    if(snapshot.name == null && snapshot.lastTradePriceOnly != null){
+    if(snapshot.name == null ){
       cb("Please enter a valid ticker symbol.")
     }else{
       var message = snapshot.name+'\n';
