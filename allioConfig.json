@@ -1,12 +1,16 @@
 {
     "COMMANDS" : {
         "/joke" : "./commands/joke.js",
+        "/allio" : "./commands/help.js",
         "/cointoss" : "./commands/cointoss.js",
         "/coin" : "./commands/cointoss.js",
         "/stock" : "./commands/stock.js",
         "/roast" : "./commands/roast.js",
         "/news" : "./commands/news.js",
-        "/help" : "./commands/help.js"
+        "/help" : "./commands/help.js",
+        "/stats" : "./commands/stats.js",
+        "/ranks" : "./commands/ranks.js",
+        "/bet" : "./commands/bet.js"
     },
     "GITHUB" : "https://github.com/arin-ray/Allio",
     "MASTER" : [
