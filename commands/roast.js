@@ -1,14 +1,17 @@
 const insultgenerator = require('insultgenerator');
 const DO_NOT_INSULT = ['arin','a-ray','aray','allio']
+const request = require('request')
 const MASTER = [
         "I can't insult my creator.",
         "Naaah.",
         "Nah we good.",
         "Nope.",
         "Sorry brah",
-        "Daddy told me not to talk back.",
-        "Sorry, not trying to get thrown in Arin's recycle bin."
+        "Boss told me not to talk back.",
+        "Sorry, not trying to get thrown in Arin's recycle bin.",
+        "Maybe if you had a decent fantasy team."
     ]
+var re = /^[a-zA-Z '.]+/
 
 var CALLBACK_FIRED = false;
 exports.run = function(message, cb){
@@ -21,11 +24,14 @@ exports.run = function(message, cb){
             cb( MASTER[Math.floor(Math.random() * MASTER.length) ])
         }
     }
-    if(!CALLBACK_FIRED){
-        insultgenerator(function(insult){
-            //cb( message+", "+insult );
-            cb( "Sorry the insult insult generator is currently down, maybe you can try saying something nice instead?");
 
+    if(!CALLBACK_FIRED){
+        request("http://wholethrower119.com/API/Insults.php",function( error, response, body ){
+            
+            var lines = body.split('\n');
+            var insult = lines[4];
+            insult = insult.charAt(0).toLowerCase() + insult.slice(1);
+            cb(message.charAt(0).toUpperCase() + message.slice(1)+', '+insult);
         });
     }
 }       
