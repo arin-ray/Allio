@@ -1,6 +1,6 @@
 var request = require('request')
 
-var rePlayer = /\"[a-zA-Z.' ]*\"/i;
+var rePlayer = /\"[a-zA-Z.' -]*\"/i;
 var reMatchup = /(vs.|at)\s*[A-Z]*/
 
 const MAX_RANKINGS = 15;
@@ -15,7 +15,16 @@ exports.run = function(message, cb){
 
 
     if(m == 'qb'){
-        URL = 'https://www.fantasypros.com/nfl/rankings/qb.php'
+        if(message.split(' ').length > 1){     
+            if(message.split(' ')[1].toLowerCase() === 'ros'){
+                URL = "https://www.fantasypros.com/nfl/rankings/ros-qb.php";
+                ros = true;
+            }else{
+                URL = 'https://www.fantasypros.com/nfl/rankings/qb.php'                            
+            }
+        }else{
+            URL = 'https://www.fantasypros.com/nfl/rankings/qb.php'            
+        }
     }else if(m == 'wr' || m == 'rb'|| m == 'te' || m == 'flex'){
         // Check for ROS
         if(message.split(' ').length > 1){

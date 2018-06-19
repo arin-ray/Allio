@@ -37,15 +37,16 @@ request(playerUrl,function( error, response, body ){
             request(statsUrl, function(error, response, body ){
                 body = JSON.parse(body)
                 var flexStats = parseFlexStats(body[0]);
-                if(lastName == 'gillislee'){
-                    flexStats+='Slick Gilly baby!'
-                }
+
                 cb(flexStats)
             })
         }else if(body[0].position === 'TE'){
             request(statsUrl, function(error, response, body ){
                 body = JSON.parse(body)
                 var flexStats = parseFlexStats(body[0]);
+                                if(lastName == 'seal-jones'){
+                    flexStats+='Sticky Ricky baby!'
+                }
                 cb(flexStats)
             })
         }else{
