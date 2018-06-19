@@ -4,7 +4,7 @@ Allio is a bot that CAN do anything, it just needs your help! Instead of creatin
 
 ## Run Allio locally
 
-1. [Install Node.js][]
+1. [Install Node.js](https://nodejs.org/en/download/)
 2. Clone the repo and cd into the app directory
 3. Run `npm install` to install the app's dependencies
 4. Run `npm start` to start the app
@@ -16,4 +16,3 @@ Allio is a bot that CAN do anything, it just needs your help! Instead of creatin
 3. Look at existing commands for guidance.
 4. Add your command name and path to `allioConfig.json`
 5. Submit a PR. 
-[Install Node.js]: https://nodejs.org/en/download/
