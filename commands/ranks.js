@@ -91,10 +91,32 @@ function buildUrl(position, ros) {
 }
 
 function scrapeRankings(body, position) {
-    var lines = body.split('\n');
     var result = '';
     var playerCount = 0;
 
+    // Modern FantasyPros pages embed consensus ranks in `var ecrData = {...};`
+    var ecrMatch = /var ecrData\s*=\s*(\{[\s\S]*?\});/.exec(body);
+    if (ecrMatch) {
+        try {
+            var ecrData = JSON.parse(ecrMatch[1]);
+            var players = ecrData.players || [];
+            for (var j = 0; j < players.length && playerCount < MAX_RANKINGS; j++) {
+                playerCount++;
+                var p = players[j];
+                var line = playerCount + ') ' + (p.player_name || 'Unknown');
+                if (p.player_opponent) {
+                    line += ' ' + p.player_opponent;
+                }
+                result += line + '\n';
+            }
+            return { text: result, count: playerCount };
+        } catch (e) {
+            console.log('Failed to parse ecrData, falling back to HTML scrape', e);
+        }
+    }
+
+    // Legacy fallback (older FantasyPros markup)
+    var lines = body.split('\n');
     for (var i = 0; i < lines.length; i++) {
         if (lines[i].indexOf('fp-player-name=') > -1) {
             playerCount++;
