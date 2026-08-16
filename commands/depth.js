@@ -7,10 +7,11 @@ var PAYLOAD_END = '};';
 // GroupMe silently drops anything past ~1000 characters.
 var MAX_MESSAGE_LENGTH = 950;
 var DEFAULT_DEPTH = 3;
+var FLEX_DEPTH = 4;
 var POSITION_DEPTH = 6;
 
-var USAGE = 'Usage: /depth <team> [qb|rb|wr|te|off|def|st|all]\n' +
-            'Examples: /depth patriots, /depth kc rb, /depth sea def';
+var USAGE = 'Usage: /depth <team> [qb|rb|wr|te|k|flex]\n' +
+            'Examples: /depth patriots, /depth kc rb, /depth sea flex';
 
 // [ espn slug, location, nickname, extra aliases ]
 var TEAMS = [
@@ -48,39 +49,38 @@ var TEAMS = [
     ['wsh', 'Washington', 'Commanders', ['was', 'wft']]
 ];
 
-var VIEWS = {
-    skill: 'skill',
-    fantasy: 'skill',
-    off: 'offense',
-    o: 'offense',
-    offense: 'offense',
-    def: 'defense',
-    d: 'defense',
-    defense: 'defense',
-    st: 'special',
-    special: 'special',
-    specialteams: 'special',
-    kicking: 'special',
-    all: 'all',
-    full: 'all',
-    everything: 'all'
-};
+// ESPN row labels that score in fantasy, in the order they should print.
+// Defense only matters as a team unit, so individual defenders are skipped.
+var FANTASY_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'PK'];
+var FLEX_POSITIONS = ['RB', 'WR', 'TE'];
 
-// Positions worth showing a fantasy group chat by default.
-var SKILL_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+// ESPN calls the kicker PK; a fantasy chat calls it K.
+var DISPLAY_LABELS = { PK: 'K' };
 
-// Shorthand that maps to one or more depth chart row labels.
-var POSITION_ALIASES = {
+var POSITION_QUERIES = {
+    qb: ['QB'],
+    quarterback: ['QB'],
+    rb: ['RB'],
+    hb: ['RB'],
+    back: ['RB'],
+    backs: ['RB'],
+    runningback: ['RB'],
+    runningbacks: ['RB'],
+    wr: ['WR'],
+    wideout: ['WR'],
+    wideouts: ['WR'],
+    receiver: ['WR'],
+    receivers: ['WR'],
+    widereceiver: ['WR'],
+    te: ['TE'],
+    tightend: ['TE'],
+    tightends: ['TE'],
     k: ['PK'],
+    pk: ['PK'],
     kicker: ['PK'],
-    punter: ['P'],
-    returner: ['PR', 'KR'],
-    ol: ['LT', 'LG', 'C', 'RG', 'RT'],
-    oline: ['LT', 'LG', 'C', 'RG', 'RT'],
-    line: ['LT', 'LG', 'C', 'RG', 'RT'],
-    secondary: ['LCB', 'RCB', 'NB', 'SS', 'FS'],
-    safety: ['SS', 'FS'],
-    corner: ['LCB', 'RCB', 'NB']
+    flex: FLEX_POSITIONS,
+    skill: FANTASY_POSITIONS,
+    all: FANTASY_POSITIONS
 };
 
 var ALIASES = buildAliases();
@@ -204,75 +204,33 @@ function extractDepthChart(body) {
     }
 }
 
-// Group names vary by scheme ("Base 3-4 D", "Base 4-3 D"), so classify by
-// contents rather than by name.
-function classify(group) {
-    if (/special/i.test(group.name)) {
-        return 'special';
-    }
-    return hasRow(group, 'QB') ? 'offense' : 'defense';
-}
-
-function hasRow(group, label) {
-    for (var i = 0; i < group.rows.length; i++) {
-        if (group.rows[i][0] === label) {
-            return true;
-        }
-    }
-    return false;
-}
-
 function render(chart, query) {
     var view = normalize(query.view);
     var teamName = (chart.team && chart.team.displayName) || 'NFL';
     var season = seasonLabel(chart);
 
-    if (!view || VIEWS[view] === 'skill') {
+    if (!view) {
         return truncate(teamName + ' Depth Chart' + season + '\n' +
-            renderRows(collectRows(chart, isSkillPosition), DEFAULT_DEPTH));
+            renderRows(collectRows(chart, FANTASY_POSITIONS), DEFAULT_DEPTH));
     }
 
-    if (VIEWS[view] === 'all') {
-        return truncate(teamName + ' Depth Chart' + season + '\n' + renderAll(chart));
+    var positions = POSITION_QUERIES[view];
+    if (!positions) {
+        return "I only track fantasy spots, so I've got nothing for \"" + query.view.trim() +
+            '".\n' + USAGE;
     }
 
-    if (VIEWS[view]) {
-        var unit = VIEWS[view];
-        var rows = collectRows(chart, null, unit);
-        if (!rows.length) {
-            return teamName + ' has no ' + unit + ' depth chart posted yet.';
-        }
-        return truncate(teamName + ' ' + unitName(unit) + season + '\n' +
-            renderRows(rows, DEFAULT_DEPTH));
-    }
-
-    return renderPosition(chart, view, teamName, season);
-}
-
-function renderPosition(chart, view, teamName, season) {
-    var labels = POSITION_ALIASES[view];
-    var rows = collectRows(chart, function (label) {
-        var key = normalize(label);
-        return labels ? labels.indexOf(label) > -1 : key === view;
-    });
-
-    // Fall back to a partial match so "lb" pulls WLB/SLB/LILB and "cb" pulls
-    // LCB/RCB, without needing an entry per scheme.
+    var rows = collectRows(chart, positions);
     if (!rows.length) {
-        rows = collectRows(chart, function (label) {
-            return normalize(label).indexOf(view) > -1;
-        });
+        return teamName + ' has no ' + view.toUpperCase() + ' listed yet.';
     }
 
-    if (!rows.length) {
-        return "No \"" + view + '" spot on the ' + teamName + " depth chart.\n" + USAGE;
-    }
-
-    var header = teamName + ' ' + view.toUpperCase() + ' Depth' + season + '\n';
+    var header = teamName + ' ' + viewName(view) + season + '\n';
+    var depth = viewDepth(view);
 
     // A lone position reads better stacked than crammed onto one line.
     if (rows.length === 1) {
-        var players = rows[0].players.slice(0, POSITION_DEPTH);
+        var players = rows[0].players.slice(0, depth);
         var lines = [];
         for (var i = 0; i < players.length; i++) {
             lines.push((i + 1) + '. ' + playerName(players[i]));
@@ -280,58 +238,36 @@ function renderPosition(chart, view, teamName, season) {
         return truncate(header + lines.join('\n'));
     }
 
-    return truncate(header + renderRows(rows, POSITION_DEPTH));
+    return truncate(header + renderRows(rows, depth));
 }
 
-// Every position across all three units only fits in one message at starter
-// depth; /depth <team> off|def|st goes deeper on a single unit.
-function renderAll(chart) {
-    var sections = [];
-    var units = ['offense', 'defense', 'special'];
-
-    for (var i = 0; i < units.length; i++) {
-        var rows = collectRows(chart, null, units[i]);
-        if (rows.length) {
-            sections.push(unitName(units[i]) + '\n' + renderStarters(rows));
-        }
-    }
-
-    return sections.join('\n');
-}
-
-function renderStarters(rows) {
-    var lines = [];
-
-    for (var i = 0; i < rows.length; i++) {
-        lines.push(rows[i].label + ': ' + playerName(rows[i].players[0]));
-    }
-
-    return lines.join('\n');
-}
-
-function collectRows(chart, matchLabel, unit) {
+// Walk the requested labels in order rather than in ESPN's page order so the
+// output always reads QB, RB, WR, TE, K. The kicker lives in a different group
+// than the rest, so every group gets scanned for each label.
+function collectRows(chart, labels) {
     var collected = [];
 
-    for (var i = 0; i < chart.dethTeamGroups.length; i++) {
-        var group = chart.dethTeamGroups[i];
+    for (var i = 0; i < labels.length; i++) {
+        var matches = [];
 
-        if (unit && classify(group) !== unit) {
-            continue;
-        }
+        for (var j = 0; j < chart.dethTeamGroups.length; j++) {
+            var rows = chart.dethTeamGroups[j].rows;
 
-        for (var j = 0; j < group.rows.length; j++) {
-            var label = group.rows[j][0];
-            var players = group.rows[j].slice(1);
-
-            if (!players.length || (matchLabel && !matchLabel(label))) {
-                continue;
+            for (var k = 0; k < rows.length; k++) {
+                if (rows[k][0] !== labels[i] || rows[k].length < 2) {
+                    continue;
+                }
+                matches.push({
+                    label: DISPLAY_LABELS[labels[i]] || labels[i],
+                    players: rows[k].slice(1)
+                });
             }
-
-            collected.push({ label: label, players: players });
         }
+
+        collected = collected.concat(numberDuplicates(matches));
     }
 
-    return numberDuplicates(collected);
+    return collected;
 }
 
 // ESPN lists three separate WR rows; number them so WR1/WR2/WR3 stay distinct.
@@ -353,10 +289,6 @@ function numberDuplicates(rows) {
     }
 
     return rows;
-}
-
-function isSkillPosition(label) {
-    return SKILL_POSITIONS.indexOf(label) > -1;
 }
 
 function renderRows(rows, depth) {
@@ -390,14 +322,28 @@ function playerName(player) {
     return name;
 }
 
-function unitName(unit) {
-    if (unit === 'offense') {
-        return 'Offense';
+// Asking for one position means you want to see past the starters; asking for
+// several means the message has to stay readable.
+function viewDepth(view) {
+    if (view === 'all' || view === 'skill') {
+        return DEFAULT_DEPTH;
     }
-    if (unit === 'defense') {
-        return 'Defense';
+    if (view === 'flex') {
+        return FLEX_DEPTH;
     }
-    return 'Special Teams';
+    return POSITION_DEPTH;
+}
+
+function viewName(view) {
+    if (view === 'flex') {
+        return 'Flex Depth';
+    }
+    if (view === 'all' || view === 'skill') {
+        return 'Depth Chart';
+    }
+
+    var label = POSITION_QUERIES[view][0];
+    return (DISPLAY_LABELS[label] || label) + ' Depth';
 }
 
 function seasonLabel(chart) {
