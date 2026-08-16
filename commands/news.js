@@ -1,10 +1,8 @@
 const allioConfig = require('../allioConfig.json');
 const stantonConfig = require('../stantonConfig.json');
-const NewsAPI = require('newsapi');
-const newsapi = new NewsAPI(stantonConfig.NEWS_API_KEY);
-const async = require('async');
 const request = require('request');
-const NO_NEWS = ['arin', 'a-ray', 'aray', 'a~ray']
+
+const NO_NEWS = ['arin', 'a-ray', 'aray', 'a~ray'];
 const TRY_INSTEAD = [
     'Did you try looking in the trash? 🗑️',
     'Try asking your girl.',
@@ -15,116 +13,191 @@ const TRY_INSTEAD = [
     'I last heard he was chilling with Zeke. 👊👊',
     'Sounds like you\'ll be taking another L this week. 📉',
     'Maybe he died? 💀'
-]
-var CALLBACK_FIRED = false;
+];
 
-function mapNews(source, cb) {
-    newsapi.articles({
-        source: source,
-    }).then(articlesResponse => {
-        if (articlesResponse.status == 'ok') {
-            cb(null, articlesResponse.articles);
-        } else {
-            cb(null, [])
+function pickRandom(list) {
+    return list[Math.floor(Math.random() * list.length)];
+}
+
+function formatArticle(article) {
+    var title = article.title || '';
+    var description = article.description || article.content || '';
+    var url = article.url || '';
+    var source = (article.source && article.source.name) ? article.source.name : '';
+    var parts = [];
+
+    if (title) {
+        parts.push(title);
+    }
+    if (description && description !== title) {
+        parts.push(description);
+    }
+    if (source) {
+        parts.push(source);
+    }
+    if (url) {
+        parts.push(url);
+    }
+
+    return parts.join('\n');
+}
+
+function queryMatchesText(query, text) {
+    if (!text) {
+        return false;
+    }
+    // Prefer whole-word matches so "apple" does not hit "Rappleyea"
+    var escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var wordMatch = new RegExp('\\b' + escaped + '\\b', 'i');
+    if (wordMatch.test(text)) {
+        return true;
+    }
+    // Multi-word queries can still use a plain substring check
+    if (query.indexOf(' ') > -1 && text.toLowerCase().indexOf(query) > -1) {
+        return true;
+    }
+    return false;
+}
+
+function searchNewsApi(endpoint, qs, cb) {
+    request({
+        uri: 'https://newsapi.org/v2/' + endpoint,
+        qs: qs,
+        method: 'GET',
+        json: true,
+        timeout: 10000
+    }, function (err, res, body) {
+        if (err || !body || body.status !== 'ok' || !Array.isArray(body.articles)) {
+            cb(null, []);
+            return;
         }
+        cb(null, body.articles.filter(function (article) {
+            return article && (article.title || article.description);
+        }));
+    });
+}
+
+function searchGeneralNews(newsQuery, cb) {
+    var apiKey = stantonConfig.NEWS_API_KEY;
+    var sources = (allioConfig.NEWS_SOURCES || []).filter(function (source, index, list) {
+        return list.indexOf(source) === index;
+    }).join(',');
+
+    // Keyword search across NewsAPI first for general coverage
+    searchNewsApi('everything', {
+        q: newsQuery,
+        language: 'en',
+        sortBy: 'publishedAt',
+        pageSize: 20,
+        apiKey: apiKey
+    }, function (err, everythingArticles) {
+        if (everythingArticles && everythingArticles.length) {
+            cb(null, everythingArticles);
+            return;
+        }
+
+        // Top headlines matching the query (broader general news)
+        searchNewsApi('top-headlines', {
+            q: newsQuery,
+            language: 'en',
+            pageSize: 20,
+            apiKey: apiKey
+        }, function (err2, headlineArticles) {
+            if (headlineArticles && headlineArticles.length) {
+                cb(null, headlineArticles);
+                return;
+            }
+
+            // Fall back to configured sources' latest headlines, then filter locally
+            if (!sources) {
+                cb(null, []);
+                return;
+            }
+
+            searchNewsApi('top-headlines', {
+                sources: sources,
+                pageSize: 100,
+                apiKey: apiKey
+            }, function (err3, sourceArticles) {
+                var matches = (sourceArticles || []).filter(function (article) {
+                    return queryMatchesText(newsQuery, article.title) ||
+                        queryMatchesText(newsQuery, article.description) ||
+                        queryMatchesText(newsQuery, article.content);
+                });
+                cb(null, matches);
+            });
+        });
+    });
+}
+
+function searchFantasyNews(newsQuery, cb) {
+    request('http://www.fantasylabs.com/api/players/news/1/?showAll=true', function (error, response, body) {
+        if (!error) {
+            try {
+                var players = JSON.parse(body);
+                for (var i = 0; i < players.length; i++) {
+                    if (queryMatchesText(newsQuery, players[i].PlayerName)) {
+                        cb(players[i].Title + '\n' + players[i].News);
+                        return;
+                    }
+                }
+            } catch (parseErr) {
+                // Continue to FantasyPros
+            }
+        }
+
+        request({
+            headers: {
+                'x-api-key': 'eTMcJIVFE84VH6CBJ5aLV6uLULsVdNUa9Hu6Iu6S'
+            },
+            uri: 'https://api.fantasypros.com/public/v2/json/NFL/news?limit=100',
+            method: 'GET'
+        }, function (err, res, fantasyBody) {
+            if (!err) {
+                try {
+                    var items = JSON.parse(fantasyBody).items || [];
+                    for (var i = 0; i < items.length; i++) {
+                        if (queryMatchesText(newsQuery, items[i].title) ||
+                            queryMatchesText(newsQuery, items[i].desc)) {
+                            cb(items[i].title + '\n' + items[i].desc);
+                            return;
+                        }
+                    }
+                } catch (parseErr) {
+                    // Fall through to no-news response
+                }
+            }
+
+            cb('No news found for ' + newsQuery + '. ' + pickRandom(TRY_INSTEAD));
+        });
     });
 }
 
 exports.run = function (newsQuery, cb) {
-    var sources = allioConfig.NEWS_SOURCES;
-    var newsDict = [];
-    newsQuery = newsQuery.toLowerCase();
-    console.log("Looking for news:"+newsQuery)
-    if (newsQuery.trim() != "") {
-        //Check for buzzwords
-        for (var i = 0; i < NO_NEWS.length; i++) {
-            if (newsQuery.toLowerCase().indexOf(NO_NEWS[i]) > -1) {
-                CALLBACK_FIRED = true;
-                cb("Arin (also known as rapper A~Ray) will be dropping his FIRE mixtape Back Where It All Started this year. Sign up here: http://arinray.me/rap")
-            }
-        }
+    newsQuery = (newsQuery || '').toLowerCase().trim();
+    console.log('Looking for news:' + newsQuery);
 
+    if (!newsQuery) {
+        return;
+    }
 
-        if (!CALLBACK_FIRED) {
-
-            console.log('Mapping news query to sources: ' + newsQuery)
-            async.map(sources, mapNews, function (err, results) {
-                console.log('Map Results')
-
-                //console.log(results)
-                for (var i = 0; i < results.length; i++) {
-                    // console.log(results[i])
-                    for (var j = 0; j < results[i].length; j++) {
-                        //console.log(results[i][j]);
-                        if (results[i][j].description != null) {
-                            if (results[i][j].title.toLowerCase().indexOf(newsQuery) > -1
-                                || results[i][j].description.toLowerCase().indexOf(newsQuery) > -1) {
-
-                                newsDict.push({ news: results[i][j].description, url: results[i][j].url });
-                            }
-                        }
-                    }
-                }
-                //console.log("Checking for news")
-                //console.log(newsDict);
-                if (newsDict.length == 0) {
-                    // Hit fantasy news API
-                    request("http://www.fantasylabs.com/api/players/news/1/?showAll=true", function (error, response, body) {
-                        if(error){
-                            cb('Error fetching news.');
-                        }else{
-                            var b = JSON.parse(body);
-                            var res;
-                            var found = false;
-                            for(var i=0;i<b.length;i++){
-                                //console.log(b[i].PlayerName);
-                                if(b[i].PlayerName.toLowerCase().indexOf(newsQuery) > -1){
-                                    //cb()
-                                    res = b[i].Title + '\n'+b[i].News;
-                                    found = true;
-                                    cb(res);
-                                    break;
-                                }
-                            }
-                            // Last Source
-                            if (!found) {
-                                request({
-                                    headers: {
-                                      'x-api-key': 'eTMcJIVFE84VH6CBJ5aLV6uLULsVdNUa9Hu6Iu6S'
-                                    },
-                                    uri: 'https://api.fantasypros.com/public/v2/json/NFL/news?limit=100',
-                                    method: 'GET'
-                                  }, function (err, res, body) {
-                                        if(err){
-                                            console.log(err)
-                                        }else{
-                                            var items = JSON.parse(body).items
-                                            //console.log(JSON.parse(body))
-                                            for(var i=0;i<items.length;i++){
-                                                if(items[i].title.toLowerCase().indexOf(newsQuery) > -1){
-                                                    res = items[i].title + '\n'+items[i].desc;
-                                                    found = true;
-                                                    cb(res);
-                                                    break;
-                                                }                                               //console.log(items[i].title)
-                                            }
-                                            
-                                            if(!found){
-                                                cb('No news found for '+newsQuery+'. '+TRY_INSTEAD[Math.floor(Math.random() * TRY_INSTEAD.length)])
-                                            }
-                                        }
-                                  });
-                            }
-                            
-                        }
-
-                    });
-
-                } else {
-                    var random_news = newsDict[Math.floor(Math.random() * newsDict.length)];
-                    cb(random_news.news + "\n" + random_news.url);
-                }
-            });
+    for (var i = 0; i < NO_NEWS.length; i++) {
+        if (newsQuery.indexOf(NO_NEWS[i]) > -1) {
+            cb('Arin (also known as rapper A~Ray) will be dropping his FIRE mixtape Back Where It All Started this year. Sign up here: http://arinray.me/rap');
+            return;
         }
     }
-}
+
+    console.log('Searching general news for: ' + newsQuery);
+    searchGeneralNews(newsQuery, function (err, articles) {
+        if (articles && articles.length) {
+            var article = pickRandom(articles);
+            cb(formatArticle(article));
+            return;
+        }
+
+        // Keep fantasy/sports as a secondary fallback for player queries
+        console.log('No general news found, checking fantasy sources for: ' + newsQuery);
+        searchFantasyNews(newsQuery, cb);
+    });
+};

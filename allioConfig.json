@@ -23,24 +23,25 @@
         "Sorry, not trying to get thrown in Arin's recycle bin."
     ],
    "NEWS_SOURCES" : [
-       "associated-press", 
-       "sky-sports-news",
-       "four-four-two",
-       "espn",
+       "associated-press",
        "bbc-news",
-       "fox-sports",
-       "google-news",
-       "the-lad-bible",
-       "the-sport-bible",
-       "techcrunch",
-       "nfl-news",
-       "financial-times",
        "bloomberg",
        "business-insider",
        "cnn",
+       "financial-times",
        "fortune",
-       "four-four-two",
        "google-news",
-       "newsweek"
+       "newsweek",
+       "reuters",
+       "techcrunch",
+       "the-verge",
+       "time",
+       "usa-today",
+       "espn",
+       "fox-sports",
+       "nfl-news",
+       "sky-sports-news",
+       "four-four-two",
+       "the-sport-bible"
     ]
 }
