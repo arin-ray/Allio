@@ -381,8 +381,9 @@ app.post('/groupme', jsonParser,function(req, res) {
       var allioModule = require(COMMANDS[command[0]]);
       var message = (data.text).substr((data.text).indexOf(" ") + 1);
       // Run the module with a message and a callback
-      allioModule.run(message, function(response){
-        sendGroupMeMessage(response);
+      allioModule.run(message, function(response, options){
+        var text = (options && options.textFallback) ? options.textFallback : response;
+        sendGroupMeMessage(text);
       })
     }else if(command[0].charAt(0) === '/'){
       sendGroupMeMessage("Sorry I dont have a "+command[0]+" command yet. Feel free to write one here!\n"+allioConfig.GITHUB);
@@ -406,6 +407,84 @@ function sendGroupMeMessage( message ){
       console.error(error);
     }
   });  
+}
+
+// --- Telegram: ranks position keyboard ---
+var ranksCommand = require('./commands/ranks.js');
+var TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || (config.TELEGRAM_BOT_TOKEN || null);
+var RANKS_BUTTON_LABELS = {};
+ranksCommand.RANKS_KEYBOARD.forEach(function(row) {
+  row.forEach(function(label) {
+    RANKS_BUTTON_LABELS[label.toUpperCase()] = true;
+  });
+});
+
+app.post('/telegram', jsonParser, function(req, res) {
+  res.sendStatus(200);
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.error('TELEGRAM_BOT_TOKEN not configured');
+    return;
+  }
+
+  var update = req.body || {};
+  var msg = update.message;
+  if (!msg || !msg.text || !msg.chat) {
+    return;
+  }
+
+  var chatId = msg.chat.id;
+  var text = msg.text.trim();
+  var command = text.split(/\s+/)[0].split('@')[0]; // strip @BotName
+  var argText = text.indexOf(' ') > -1 ? text.substr(text.indexOf(' ') + 1) : '';
+
+  if (command === '/ranks') {
+    ranksCommand.run(argText || '/ranks', function(response, options) {
+      sendTelegramMessage(chatId, response, options);
+    });
+    return;
+  }
+
+  // Reply-keyboard taps arrive as plain text (e.g. "ROS QB", "FLX")
+  if (RANKS_BUTTON_LABELS[text.toUpperCase()]) {
+    ranksCommand.run(text, function(response, options) {
+      sendTelegramMessage(chatId, response, options);
+    });
+    return;
+  }
+
+  if (COMMANDS[command]) {
+    var allioModule = require(COMMANDS[command]);
+    allioModule.run(argText, function(response) {
+      sendTelegramMessage(chatId, response);
+    });
+  }
+});
+
+function sendTelegramMessage(chatId, text, options) {
+  if (!TELEGRAM_BOT_TOKEN) {
+    return;
+  }
+  var payload = {
+    chat_id: chatId,
+    text: text
+  };
+  if (options && options.reply_markup) {
+    payload.reply_markup = JSON.stringify(options.reply_markup);
+  }
+  request({
+    uri: 'https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage',
+    method: 'POST',
+    json: payload
+  }, function(error, response, body) {
+    if (error) {
+      console.error('Unable to send Telegram message.');
+      console.error(error);
+    } else if (body && body.ok === false) {
+      console.error('Telegram API error:', body);
+    } else {
+      console.log('Successfully sent Telegram message');
+    }
+  });
 }
 
 
