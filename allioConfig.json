@@ -10,6 +10,7 @@
         "/help" : "./commands/help.js",
         "/stats" : "./commands/stats.js",
         "/ranks" : "./commands/ranks.js",
+        "/depth" : "./commands/depth.js",
         "/bet" : "./commands/bet.js"
     },
     "GITHUB" : "https://github.com/arin-ray/Allio",
